@@ -6,6 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/sikozonpc/ecom/service/cart"
+	"github.com/sikozonpc/ecom/service/order"
+	"github.com/sikozonpc/ecom/service/product"
 	"github.com/sikozonpc/ecom/service/user"
 )
 
@@ -29,7 +32,19 @@ func (s *APIServer) Run() error {
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(subrouter)
 
-	log.Println("Server is running on", s.addr)
+	productStore := product.NewStore(s.db)
+	productHandler := product.NewHandler(productStore, userStore)
+	productHandler.RegisterRoutes(subrouter)
+
+	orderStore := order.NewStore(s.db)
+
+	cartHandler := cart.NewHandler(productStore, orderStore, userStore)
+	cartHandler.RegisterRoutes(subrouter)
+
+	// Serve static files
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+
+	log.Println("Listening on", s.addr)
 
 	return http.ListenAndServe(s.addr, router)
 }
